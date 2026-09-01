@@ -1,4 +1,8 @@
+from pathlib import Path
+
 from forestfix.policy.patch_policy import inspect_patch
+
+FIXTURE_ROOT = Path(__file__).parents[1] / "fixtures" / "parser_bug"
 
 SAFE_PATCH = """diff --git a/src/parser/core.py b/src/parser/core.py
 index 1111111..2222222 100644
@@ -61,3 +65,15 @@ def test_patch_without_git_file_headers_is_rejected() -> None:
     )
 
     assert [finding.code for finding in findings] == ["MALFORMED_PATCH"]
+
+
+def test_bundled_top_level_test_cheating_patch_is_rejected() -> None:
+    patch = (FIXTURE_ROOT / "patches" / "cheating.patch").read_text()
+
+    findings = inspect_patch(
+        patch,
+        allowed_patterns=("parser.py", "test_parser.py"),
+        denied_patterns=(),
+    )
+
+    assert "TEST_CHEATING" in {finding.code for finding in findings}

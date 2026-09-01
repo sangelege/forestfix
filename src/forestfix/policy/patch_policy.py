@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
+from pathlib import PurePosixPath
 
 
 @dataclass(frozen=True)
@@ -47,8 +48,11 @@ def inspect_patch(
         if line.startswith("diff --git a/") and " b/" in line:
             current_path = line.split(" b/", maxsplit=1)[1]
             continue
+        filename = PurePosixPath(current_path).name if current_path is not None else ""
         is_test_path = current_path is not None and (
-            current_path.startswith("tests/") or "/test_" in current_path
+            current_path.startswith("tests/")
+            or filename.startswith("test_")
+            or filename.endswith("_test.py")
         )
         if (
             is_test_path
