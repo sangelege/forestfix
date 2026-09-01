@@ -1,0 +1,10 @@
+diff --git a/parser.py b/parser.py
+--- a/parser.py
++++ b/parser.py
+@@ -1,2 +1,5 @@
+ def normalize_header(value: str) -> str:
+-    return value.strip().lower()
++    normalized = value.strip().lower()
++    if not normalized:
++        raise ValueError("header must not be empty")
++    return normalized
