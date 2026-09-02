@@ -12,7 +12,7 @@ ForestFix 的目标不是让 Agent 看起来会写代码，而是回答一个更
 
 ## 当前版本能做什么
 
-当前是 **v0.1 验证核心**，已经实现：
+当前是 **v0.2 可验证产品核心**，已经实现：
 
 - 使用 Pydantic 校验不可变的 `TaskSpec`；
 - 检查补丁格式、允许路径和禁止路径；
@@ -28,18 +28,18 @@ ForestFix 的目标不是让 Agent 看起来会写代码，而是回答一个更
 - 运行额外验收命令并记录退出码、输出和耗时；
 - 并行验证多个相互独立的候选；
 - 输出 `BaselineReport` 和 `VerificationReport`；
+- SQLite 持久化任务、候选与验证报告；
+- Hermes / Codex / Claude 打印模式 CLI Provider 适配；
+- 将已通过候选应用到独立本地分支；
+- FastAPI + 原生 JavaScript 产品控制台；
 - 提供无需 API Key 的离线 Demo；
-- 提供只读 FastAPI 健康检查和补丁检查接口。
+- 提供 `forestfix demo` 与 `forestfix serve` 命令。
 
 ## 还没有实现什么
 
-以下属于后续阶段，目前不要把 ForestFix 当成完整的自动编程 Agent：
+以下仍属于后续阶段，默认不自动执行：
 
-- LLM 生成修复补丁；
-- 多个模型角色的自动编排；
-- 数据库和持久化任务记录；
-- 容器级安全沙箱；
-- GitHub Issue/CI 自动监听；
+- GitHub Issue/CI 主动监听；
 - 自动创建 Pull Request；
 - 自动合并代码；
 - 主动发现问题的 Agent；
@@ -155,21 +155,16 @@ Demo 不需要模型或 GitHub API Key，会实际创建临时 Git 仓库并展�
 
 完整说明见：[安全边界](docs/SECURITY.md)。
 
-## API
+## Web 控制台
 
-安装 Web 依赖：
+安装 Web 依赖并启动控制台：
 
 ```bash
 uv pip install -e '.[web]'
+.venv/bin/forestfix serve --unsafe-local
 ```
 
-启动只读 API：
-
-```bash
-.venv/bin/uvicorn forestfix.api.app:app \
-  --host 127.0.0.1 \
-  --port 8000
-```
+打开 `http://127.0.0.1:8000`。控制台可创建任务、运行基线、通过已安装 Provider 生成候选、查看证据，并将通过候选应用到独立本地分支。
 
 当前接口：
 
@@ -196,7 +191,7 @@ uv pip install -e '.[web]'
 }
 ```
 
-API 目前不会运行候选补丁；候选验证仍通过 CLI 完成。
+API 提供健康检查、补丁检查、任务与候选管理、Provider 生成，以及显式应用分支接口。
 
 ## 设计理念
 
@@ -238,13 +233,16 @@ Agent 之间不应该围绕同一份答案无限 push back。每个 Agent 应提
 
 ```text
 src/forestfix/
-├── api/          # FastAPI 只读接口
-├── domain/       # TaskSpec 等领域模型
-├── policy/       # 补丁和路径策略
-├── sandbox/      # Git worktree 和命令执行器
-├── verification/ # 基线、候选和报告流水线
-├── demo_data/    # 安装 Wheel 后仍可运行的离线 Demo 数据
-└── cli.py        # forestfix demo / verify
+├── api/           # FastAPI 产品控制台
+├── domain/        # TaskSpec 与 CandidateRecord
+├── orchestration/ # Provider → 验证 → 应用服务
+├── policy/        # 补丁和路径策略
+├── sandbox/       # Git worktree、执行器和分支应用
+├── storage/       # SQLite 任务与候选持久化
+├── verification/  # 基线、候选和报告流水线
+├── web/           # HTML / CSS / JavaScript 控制台
+├── demo_data/     # 安装 Wheel 后仍可运行的离线 Demo 数据
+└── cli.py         # forestfix demo / serve / verify
 ```
 
 ## 文档

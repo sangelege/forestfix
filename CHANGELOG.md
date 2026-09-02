@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 — Product console and provider orchestration
+
+- Added provider orchestration for Hermes, Codex, and Claude print-mode CLIs.
+- Added SQLite candidate persistence and task lifecycle statuses.
+- Added automatic executor selection between Docker and explicit trusted local mode.
+- Added a FastAPI + vanilla JavaScript product console for task creation, baseline reproduction, provider generation, evidence review, and local branch application.
+- Added `forestfix serve` and safe branch application for accepted candidates.
+- Hardened local execution for Windows, including Python alias resolution and descendant process termination.
+- Kept the existing deterministic verifier as the trust boundary.
+
 ## 0.1.0 — Initial core
 
 - Added immutable `TaskSpec` validation with explicit acceptance commands and path scope.

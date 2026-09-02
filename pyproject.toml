@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "forestfix"
-version = "0.1.0"
-description = "A verifiable multi-agent patch evaluation system"
+version = "0.2.0"
+description = "A verifiable multi-agent patch evaluation and product console"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

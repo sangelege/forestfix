@@ -9,13 +9,13 @@ from pathlib import Path
 
 from forestfix.domain.task_spec import TaskSpec
 from forestfix.policy.patch_policy import inspect_patch, inspect_paths
-from forestfix.sandbox.executor import CommandExecutor
+from forestfix.sandbox.executor import CommandRunner
 from forestfix.sandbox.worktrees import GitWorktreeManager
 from forestfix.verification.reports import BaselineReport, CommandEvidence, VerificationReport
 
 
 class VerificationPipeline:
-    def __init__(self, spec: TaskSpec, executor: CommandExecutor, worktree_root: Path) -> None:
+    def __init__(self, spec: TaskSpec, executor: CommandRunner, worktree_root: Path) -> None:
         self.spec = spec
         self.executor = executor
         self.worktrees = GitWorktreeManager(spec.repo_path, worktree_root)
@@ -56,25 +56,27 @@ class VerificationPipeline:
                     "git",
                     "-c",
                     "core.hooksPath=/dev/null",
+                    "-c",
+                    "core.autocrlf=false",
                     "apply",
                     "--index",
                     "--whitespace=error",
                     "-",
                 ],
                 cwd=worktree,
-                input=patch,
+                input=patch.encode("utf-8"),
                 check=False,
                 capture_output=True,
-                text=True,
                 timeout=self.worktrees.git_timeout_seconds,
             )
             if applied.returncode != 0:
+                apply_error = applied.stderr.decode("utf-8", errors="replace").strip()
                 return VerificationReport(
                     candidate_id=candidate_id,
                     patch_sha256=patch_sha256,
                     accepted=False,
                     stage="apply_failed",
-                    apply_error=applied.stderr.strip() or "git apply failed",
+                    apply_error=apply_error or "git apply failed",
                 )
 
             actual_paths = self._actual_paths(worktree)

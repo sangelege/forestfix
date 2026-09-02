@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ForestFix</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">FF</span>
+      <div>
+        <h1>ForestFix</h1>
+        <p>verified patch pipeline</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="execution-badge" class="badge neutral">checking runtime</span>
+      <button id="refresh-tasks" class="button ghost">刷新</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="task-sidebar">
+      <div class="sidebar-head">
+        <h2>任务</h2>
+        <div class="button-row">
+          <button id="demo-task" class="button ghost compact">离线演示</button>
+          <button id="new-task" class="button primary compact">新建任务</button>
+        </div>
+      </div>
+      <div id="task-list" class="task-list"></div>
+    </aside>
+
+    <section class="detail">
+      <div id="empty-state" class="empty-state">
+        <div class="empty-title">选择一个任务</div>
+        <p>左侧任务列表保存了每个补丁评估的完整 Spec 与候选证据。</p>
+      </div>
+
+      <div id="task-detail" class="task-detail hidden">
+        <div class="detail-head">
+          <div>
+            <div class="eyebrow">Task</div>
+            <h2 id="detail-task-id"></h2>
+          </div>
+          <span id="detail-status" class="badge neutral"></span>
+        </div>
+
+        <nav class="tabs" aria-label="task sections">
+          <button class="tab active" data-tab="overview">概览</button>
+          <button class="tab" data-tab="run">运行</button>
+          <button class="tab" data-tab="candidates">候选</button>
+        </nav>
+
+        <section id="tab-overview" class="tab-panel active">
+          <div class="split">
+            <div>
+              <h3>任务 Spec</h3>
+              <pre id="spec-json" class="code-block"></pre>
+            </div>
+            <div>
+              <h3>基线</h3>
+              <pre id="baseline-json" class="code-block"></pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-run" class="tab-panel">
+          <div class="run-grid">
+            <div class="field">
+              <label>Provider</label>
+              <div id="provider-checks" class="check-row"></div>
+            </div>
+            <div class="field">
+              <label for="execution-mode">执行方式</label>
+              <select id="execution-mode">
+                <option value="auto">Auto</option>
+                <option value="docker">Docker</option>
+                <option value="local">Local trusted</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="container-image">容器镜像</label>
+              <input id="container-image" value="python:3.12-slim">
+            </div>
+          </div>
+          <div class="button-row">
+            <button id="run-baseline" class="button ghost">运行基线</button>
+            <button id="run-generate" class="button primary">生成并验证</button>
+          </div>
+          <div class="manual-panel">
+            <label class="field">
+              <span>Candidate ID</span>
+              <input id="manual-candidate-id" value="manual-candidate">
+            </label>
+            <label class="field">
+              <span>手动补丁</span>
+              <textarea id="manual-patch" rows="8" placeholder="diff --git ..."></textarea>
+            </label>
+            <div class="button-row">
+              <button id="fill-demo-patch" type="button" class="button ghost compact">使用演示补丁</button>
+              <button id="verify-manual" class="button ghost">验证手动补丁</button>
+            </div>
+          </div>
+          <div id="run-status" class="run-status"></div>
+        </section>
+
+        <section id="tab-candidates" class="tab-panel">
+          <div id="candidate-list" class="candidate-list"></div>
+          <div id="candidate-detail" class="candidate-detail hidden">
+            <div class="candidate-detail-head">
+              <div>
+                <span class="eyebrow">Candidate</span>
+                <h3 id="candidate-id"></h3>
+              </div>
+              <div class="button-row">
+                <button id="apply-candidate" class="button primary compact" disabled>应用到本地分支</button>
+              </div>
+            </div>
+            <div class="candidate-grid">
+              <div>
+                <h4>Patch</h4>
+                <pre id="candidate-patch" class="code-block patch-block"></pre>
+              </div>
+              <div>
+                <h4>验证证据</h4>
+                <pre id="candidate-report" class="code-block"></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="task-dialog">
+    <form id="task-form" method="dialog">
+      <div class="dialog-head">
+        <h2>新建补丁任务</h2>
+        <button type="button" id="close-dialog" class="icon-button" aria-label="关闭">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label class="field span-2">
+          <span>Task ID</span>
+          <input name="task_id" value="parser-task" required>
+        </label>
+        <label class="field span-2">
+          <span>仓库绝对路径</span>
+          <input name="repo_path" required placeholder="C:\path\to\repo or /home/user/repo">
+        </label>
+        <label class="field span-2">
+          <span>Base Commit</span>
+          <input name="base_commit" required pattern="[0-9a-f]{40}" placeholder="40-char SHA">
+        </label>
+        <label class="field span-2">
+          <span>复现命令（逗号分隔参数）</span>
+          <input name="reproduction_command" required value="python3,test_parser.py">
+        </label>
+        <label class="field span-2">
+          <span>验收命令（每行一条）</span>
+          <textarea name="acceptance_commands" rows="3" required>python3,test_parser.py</textarea>
+        </label>
+        <label class="field">
+          <span>允许路径（逗号分隔）</span>
+          <input name="allowed_paths" required value="parser.py,test_parser.py">
+        </label>
+        <label class="field">
+          <span>禁止路径（逗号分隔）</span>
+          <input name="denied_paths" placeholder="pyproject.toml">
+        </label>
+        <label class="field">
+          <span>候选上限</span>
+          <input name="candidate_count" type="number" min="1" max="8" value="3">
+        </label>
+        <label class="field">
+          <span>超时秒数</span>
+          <input name="timeout_seconds" type="number" min="1" max="3600" value="600">
+        </label>
+        <label class="field checkbox-field">
+          <input name="network_access" type="checkbox">
+          <span>允许网络访问</span>
+        </label>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" id="cancel-dialog" class="button ghost">取消</button>
+        <button type="submit" class="button primary">创建任务</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

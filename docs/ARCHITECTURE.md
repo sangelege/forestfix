@@ -20,6 +20,22 @@ BaselineReport / VerificationReport JSON
 
 `VerificationPipeline.verify_candidate` is the trust boundary for a candidate. It never edits the main repository. Every candidate receives a separate worktree, and `verify_candidates` evaluates candidates independently with deterministic result ordering.
 
+The product console adds a generation path before this trust boundary:
+
+```text
+TaskSpec JSON
+    ↓
+Baseline reproduction
+    ↓
+Provider A / B / C (Hermes, Codex, Claude)
+    ↓
+Candidate patch
+    ↓
+Deterministic verification
+    ↓
+Human approval → local branch apply
+```
+
 ## Trust hierarchy
 
 1. Git and process exit codes;
@@ -30,29 +46,21 @@ BaselineReport / VerificationReport JSON
 
 The lower levels cannot override a failure at a higher level.
 
-## Planned path
+## Remaining path
 
 ```text
-Choice-driven UI
+GitHub webhook / CI trigger
     ↓
-Spec Compiler + Policy Gate
+Task suggestion
     ↓
-Orchestrator state machine
+Human approval
     ↓
-Independent Generator A/B/C
+Draft pull request
     ↓
-Candidate Pool
-    ↓
-Container Sandbox + Deterministic Verifier
-    ↓
-Independent Reviewer
-    ↓
-Human Approval
-    ↓
-Branch / draft PR
+No automatic merge
 ```
 
-The planned Agent components are intentionally absent from the current core. The verifier must remain usable with hand-written patches and an offline fixture before a model provider is connected.
+The verifier remains usable with hand-written patches and an offline fixture before any remote side effect is enabled.
 
 ## Module responsibilities
 
@@ -61,4 +69,6 @@ The planned Agent components are intentionally absent from the current core. The
 - `sandbox/`: worktree and command execution boundaries;
 - `verification/`: baseline, candidate, and evidence reports;
 - `cli.py`: offline demo and JSON-producing CLI;
-- `api/`: safe read-only inspection endpoints.
+- `api/`: product console and task/candidate endpoints.
+- `orchestration/`: provider-to-verification product service.
+- `storage/`: task, candidate, and report persistence.

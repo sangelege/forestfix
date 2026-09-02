@@ -2,10 +2,23 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import time
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
+
+
+class CommandRunner(Protocol):
+    def run(
+        self,
+        argv: list[str] | tuple[str, ...],
+        *,
+        cwd: Path,
+        timeout_seconds: int,
+    ) -> "CommandResult":
+        ...
 
 
 @dataclass(frozen=True)
@@ -40,10 +53,19 @@ class CommandExecutor:
         for executable in self.allowed_executables:
             if Path(executable).name != executable:
                 raise ValueError("allowlisted executables must use bare names")
-            resolved = shutil.which(executable, path=trusted_path)
+            resolved = self._resolve_executable(executable)
             if resolved is None:
                 raise FileNotFoundError(f"allowlisted executable was not found: {executable}")
             self._resolved_executables[executable] = resolved
+
+    def _resolve_executable(self, executable: str) -> str | None:
+        """Resolve a bare executable without ever searching repository paths."""
+        if os.name == "nt" and executable in {"python", "python3"}:
+            return str(Path(sys.executable).resolve())
+        resolved = shutil.which(executable, path=self.trusted_path)
+        if resolved is None and os.name == "nt":
+            resolved = shutil.which(executable)
+        return resolved
 
     def run(
         self,
@@ -84,8 +106,7 @@ class CommandExecutor:
             stdout, stderr = process.communicate(timeout=timeout_seconds)
         except subprocess.TimeoutExpired:
             timed_out = True
-            with suppress(ProcessLookupError):
-                os.killpg(process.pid, signal.SIGKILL)
+            self._terminate_process_tree(process)
             stdout, stderr = process.communicate()
 
         return CommandResult(
@@ -96,4 +117,17 @@ class CommandExecutor:
             stderr=stderr,
             duration_seconds=time.monotonic() - started,
             timed_out=timed_out,
+        )
+
+    @staticmethod
+    def _terminate_process_tree(process: subprocess.Popen[str]) -> None:
+        """Terminate the process and its descendants without relying on POSIX only."""
+        if hasattr(os, "killpg"):
+            with suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            return
+        subprocess.run(
+            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            check=False,
+            capture_output=True,
         )

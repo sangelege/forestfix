@@ -36,6 +36,8 @@ class GitWorktreeManager:
                 "git",
                 "-c",
                 "core.hooksPath=/dev/null",
+                "-c",
+                "core.autocrlf=false",
                 "worktree",
                 "add",
                 "--detach",

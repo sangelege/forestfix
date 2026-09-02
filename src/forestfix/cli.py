@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -123,12 +124,36 @@ def _run_demo_command(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _serve(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    os.environ["FORESTFIX_ALLOW_UNSAFE_LOCAL"] = "1" if args.unsafe_local else "0"
+    uvicorn.run(
+        "forestfix.api.app:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="forestfix")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     demo = subparsers.add_parser("demo", help="run the offline parser fixture demo")
     demo.set_defaults(handler=_run_demo_command)
+
+    serve = subparsers.add_parser("serve", help="start the ForestFix web console")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--reload", action="store_true")
+    serve.add_argument(
+        "--unsafe-local",
+        action="store_true",
+        help="allow trusted local execution through the web console",
+    )
+    serve.set_defaults(handler=_serve)
 
     verify = subparsers.add_parser("verify", help="verify one candidate patch")
     verify.add_argument("--spec", required=True, help="TaskSpec JSON file")
