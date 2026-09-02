@@ -1,5 +1,7 @@
 # ForestFix
 
+[简体中文](README.zh-CN.md) · **English**
+
 ForestFix is a verifiable patch-evaluation core for Python repositories. It turns a fixed baseline, a candidate patch, an allowed path scope, and executable acceptance commands into evidence-backed results.
 
 The project deliberately separates **generation** from **trust**: an Agent may propose a patch, but only deterministic policy checks and acceptance commands can mark it as accepted.
