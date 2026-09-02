@@ -44,3 +44,11 @@ def test_task_spec_rejects_empty_commands(tmp_path: Path) -> None:
 
     with pytest.raises(ValidationError, match="at least one argument"):
         TaskSpec.model_validate(data)
+
+
+def test_task_spec_requires_at_least_one_acceptance_command(tmp_path: Path) -> None:
+    data = valid_spec_data(tmp_path)
+    data["acceptance_commands"] = []
+
+    with pytest.raises(ValidationError, match="acceptance command"):
+        TaskSpec.model_validate(data)

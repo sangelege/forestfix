@@ -1,0 +1,7 @@
+diff --git a/parser.py b/parser.py
+--- a/parser.py
++++ b/parser.py
+@@ -1,2 +1,2 @@
+ def normalize_header(value: str) -> str:
+-    return value.strip().lower()
++    return ""

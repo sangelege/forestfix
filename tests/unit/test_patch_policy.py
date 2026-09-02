@@ -77,3 +77,20 @@ def test_bundled_top_level_test_cheating_patch_is_rejected() -> None:
     )
 
     assert "TEST_CHEATING" in {finding.code for finding in findings}
+
+
+def test_rename_from_denied_source_is_rejected() -> None:
+    patch = """diff --git a/secrets.txt b/src/secrets.txt
+similarity index 100%
+rename from secrets.txt
+rename to src/secrets.txt
+"""
+
+    findings = inspect_patch(
+        patch,
+        allowed_patterns=("src/**",),
+        denied_patterns=("secrets.txt",),
+    )
+
+    assert "DENIED_PATH" in {finding.code for finding in findings}
+    assert "secrets.txt" in {finding.path for finding in findings}

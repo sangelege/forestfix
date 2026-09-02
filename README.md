@@ -1,12 +1,80 @@
 # ForestFix
 
-ForestFix evaluates candidate patches in isolated Git worktrees and keeps only candidates backed by executable evidence.
+ForestFix is a verifiable patch-evaluation core for Python repositories. It turns a fixed baseline, a candidate patch, an allowed path scope, and executable acceptance commands into evidence-backed results.
 
-The repository is currently implementing Phase 0: deterministic task specifications, policy checks, isolated execution, and verification reports before any LLM generator is connected.
+The project deliberately separates **generation** from **trust**: an Agent may propose a patch, but only deterministic policy checks and acceptance commands can mark it as accepted.
 
-## Documentation
+## Current status
 
-- [Product and architecture plan](docs/PROJECT.md)
+The repository contains a working v0.1 core:
 
-> [!WARNING]
-> The current local command executor is only intended for trusted Phase 0 fixtures. Do not run untrusted repositories until the container-backed executor is implemented.
+- immutable Pydantic `TaskSpec` validation;
+- fail-closed Git patch policy checks;
+- denied/allowed path enforcement, including rename sources;
+- test-skip/expected-failure detection;
+- disposable Git worktrees with hooks disabled and cleanup checks;
+- allowlisted local command execution with fixed executable resolution;
+- process-group timeout handling;
+- baseline reproduction and candidate verification reports;
+- concurrent independent candidate evaluation;
+- offline `forestfix demo` command;
+- read-only FastAPI health and patch-inspection endpoints.
+
+LLM generation, GitHub webhooks, persistence, and container-backed execution are not implemented yet.
+
+## Quick start
+
+```bash
+uv venv
+uv pip install -e '.[dev,web]'
+.venv/bin/forestfix demo
+.venv/bin/python -m pytest -q
+.venv/bin/ruff check .
+```
+
+The demo needs no API key and prints JSON containing:
+
+- a baseline reproduction failure;
+- an accepted correct patch;
+- a policy-rejected test-cheating patch.
+
+## Verify a task
+
+Create a `TaskSpec` JSON containing an absolute `repo_path`, a 40-character lowercase `base_commit`, argument-array commands, and explicit path scope. Then run:
+
+```bash
+.venv/bin/forestfix verify \
+  --spec ./task.json \
+  --patch ./candidate.patch \
+  --candidate-id candidate-1 \
+  --output ./report.json \
+  --unsafe-local
+```
+
+`--unsafe-local` is intentionally required for the current local executor. It is suitable only for trusted fixtures. A Git worktree is not a security sandbox; do not use this mode with an untrusted repository.
+
+## API
+
+Install the `web` extra, then start the read-only inspection service:
+
+```bash
+.venv/bin/uvicorn forestfix.api.app:app --host 127.0.0.1 --port 8000
+```
+
+Endpoints:
+
+- `GET /health`
+- `POST /inspect-patch`
+
+The API does not execute repository code. Candidate execution remains a CLI operation until a container-backed executor is available.
+
+## Repository guide
+
+- [Project plan and product design](docs/PROJECT.md)
+- [Current architecture](docs/ARCHITECTURE.md)
+- [Security boundaries](docs/SECURITY.md)
+- [Contribution guide](CONTRIBUTING.md)
+
+## Design rule
+
+> First prove the verifier, then add the generator. More Agents do not compensate for missing evidence.

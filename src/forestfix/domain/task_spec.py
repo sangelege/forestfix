@@ -22,12 +22,19 @@ class TaskSpec(BaseModel):
     repo_path: Path
     base_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
     reproduction_command: Command
-    acceptance_commands: tuple[Command, ...]
+    acceptance_commands: tuple[Command, ...] = Field(min_length=1)
     allowed_paths: tuple[str, ...]
     denied_paths: tuple[str, ...] = ()
     candidate_count: int = Field(ge=1, le=8)
     timeout_seconds: int = Field(ge=1, le=3600)
     network_access: bool = False
+
+    @field_validator("acceptance_commands", mode="before")
+    @classmethod
+    def validate_acceptance_commands(cls, commands: object) -> object:
+        if not commands:
+            raise ValueError("at least one acceptance command is required")
+        return commands
 
     @field_validator("allowed_paths", "denied_paths")
     @classmethod
