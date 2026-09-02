@@ -69,8 +69,10 @@ def test_good_candidate_is_accepted_with_command_evidence(tmp_path: Path) -> Non
     assert report.accepted is True
     assert report.stage == "accepted"
     assert report.actual_paths == ("parser.py",)
-    assert len(report.commands) == 1
+    assert len(report.commands) == 2
+    assert report.commands[0].argv == ("python3", "test_parser.py")
     assert report.commands[0].exit_code == 0
+    assert report.commands[1].exit_code == 0
     expected_source = "def normalize_header(value: str) -> str:\n    return value.strip().lower()\n"
     assert (repo / "parser.py").read_text() == expected_source
 
@@ -120,3 +122,27 @@ def test_multiple_candidates_are_evaluated_independently(tmp_path: Path) -> None
     assert {report.candidate_id for report in reports} == {"good-1", "bad-1"}
     assert {report.accepted for report in reports} == {True, False}
     assert not any((tmp_path / "worktrees").iterdir())
+
+
+def test_candidate_must_fix_the_reproduced_failure(tmp_path: Path) -> None:
+    repo, commit = make_fixture_repo(tmp_path)
+    spec = TaskSpec(
+        task_id="parser-task-unrelated-acceptance",
+        repo_path=repo,
+        base_commit=commit,
+        reproduction_command=["python3", "test_parser.py"],
+        acceptance_commands=[["python3", "-c", "print('unrelated check')"]],
+        allowed_paths=["parser.py"],
+        candidate_count=1,
+        timeout_seconds=10,
+    )
+    executor = CommandExecutor({"python3"}, allow_unsafe_local=True)
+    pipeline = VerificationPipeline(spec, executor, tmp_path / "worktrees")
+    patch = (FIXTURE_ROOT / "patches" / "failing.patch").read_text()
+
+    report = pipeline.verify_candidate("bad-reproduction", patch)
+
+    assert report.accepted is False
+    assert report.stage == "verification_failed"
+    assert report.commands[0].argv == ("python3", "test_parser.py")
+    assert report.commands[0].exit_code != 0

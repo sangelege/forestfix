@@ -94,6 +94,22 @@ class VerificationPipeline:
                 )
 
             evidence: list[CommandEvidence] = []
+            reproduction = self.executor.run(
+                self.spec.reproduction_command,
+                cwd=worktree,
+                timeout_seconds=self.spec.timeout_seconds,
+            )
+            evidence.append(CommandEvidence.from_result(reproduction))
+            if reproduction.exit_code != 0 or reproduction.timed_out:
+                return VerificationReport(
+                    candidate_id=candidate_id,
+                    patch_sha256=patch_sha256,
+                    accepted=False,
+                    stage="verification_failed",
+                    actual_paths=actual_paths,
+                    commands=tuple(evidence),
+                )
+
             for command in self.spec.acceptance_commands:
                 result = self.executor.run(
                     command,

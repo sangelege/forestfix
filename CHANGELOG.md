@@ -7,6 +7,7 @@
 - Added disposable Git worktrees with hook suppression, timeouts, and cleanup verification.
 - Added explicit trusted-fixture local executor with executable resolution and process-group timeouts.
 - Added baseline reproduction and candidate verification reports.
+- Candidate verification now reruns the reproduced failure before accepting any unrelated acceptance command.
 - Added concurrent independent candidate evaluation.
 - Added offline CLI demo and `forestfix verify` JSON workflow.
 - Added read-only FastAPI health and patch-inspection endpoints.
